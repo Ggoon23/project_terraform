@@ -21,16 +21,13 @@ module "vpc" {
   public_subnet_cidrs = var.public_subnets
   private_subnet_cidrs = var.private_subnets
   database_subnet_cidrs = var.database_subnets
-  availability_zones  = data.aws_availability_zones.available.names
 
   enable_nat_gateway     = true
-  enable_vpn_gateway     = false
   enable_dns_hostnames   = true
   enable_dns_support     = true
-  enable_flow_logs       = true
-  flow_logs_s3_bucket    = module.s3.logging_bucket_name
+  enable_vpc_flow_logs   = true
 
-  tags = {
+  common_tags = {
     Component = "Networking"
   }
 }
