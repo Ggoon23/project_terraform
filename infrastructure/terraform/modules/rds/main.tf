@@ -28,13 +28,18 @@ resource "aws_db_parameter_group" "main" {
 
   # ISMS-P 컴플라이언스: 로그 설정
   parameter {
-    name  = "log_statement"
-    value = "all"
+  name  = "slow_query_log"
+  value = "1"
+  } 
+
+  parameter {
+    name  = "long_query_time"
+    value = "1"
   }
 
   parameter {
-    name  = "log_min_duration_statement"
-    value = "1000"
+    name  = "general_log"
+    value = "1"
   }
 
   tags = var.common_tags
