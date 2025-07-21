@@ -180,6 +180,57 @@ resource "aws_guardduty_detector" "main" {
   })
 }
 
+# Splunk Forwarder용 IAM 역할 생성 (추가 필요)
+resource "aws_iam_role" "splunk_forwarder" {
+  name = "${var.project_name}-splunk-forwarder-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# S3/CloudWatch 읽기 권한 정책 추가
+resource "aws_iam_role_policy" "splunk_forwarder_s3_cloudwatch" {
+  name = "${var.project_name}-splunk-forwarder-policy"
+  role = aws_iam_role.splunk_forwarder.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.s3_bucket_name}",
+          "arn:aws:s3:::${var.s3_bucket_name}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+
 # GuardDuty용 S3 버킷 (선택사항)
 resource "aws_s3_bucket" "guardduty_findings" {
   count  = var.guardduty_export_findings_to_s3 ? 1 : 0

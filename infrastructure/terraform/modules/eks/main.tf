@@ -91,6 +91,27 @@ resource "aws_security_group" "cluster" {
   }
 }
 
+# Splunk 통신 포트 추가 (기존 security group에 추가)
+resource "aws_security_group_rule" "splunk_forwarder_ports" {
+  type              = "ingress"
+  from_port         = 9997
+  to_port           = 9997
+  protocol          = "tcp"
+  cidr_blocks       = ["10.0.0.0/8"]  # VPC CIDR 범위로 조정
+  security_group_id = aws_security_group.node_group.id
+  description       = "Splunk forwarder communication"
+}
+
+resource "aws_security_group_rule" "splunk_web_interface" {
+  type              = "ingress"
+  from_port         = 8089
+  to_port           = 8089
+  protocol          = "tcp"
+  cidr_blocks       = ["10.0.0.0/8"]  # 관리 네트워크만 허용
+  security_group_id = aws_security_group.node_group.id
+  description       = "Splunk management interface"
+}
+
 # EKS 클러스터
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name

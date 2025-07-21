@@ -149,6 +149,20 @@ output "custom_event_bus_arn" {
   value       = var.create_custom_event_bus ? aws_cloudwatch_event_bus.security[0].arn : null
 }
 
+# Splunk 연동용 출력값 추가
+output "splunk_forwarder_role_arn" {
+  description = "Splunk Forwarder IAM 역할 ARN"
+  value       = aws_iam_role.splunk_forwarder.arn
+}
+
+output "s3_log_paths" {
+  description = "S3 로그 경로 목록"
+  value = {
+    cloudtrail = "s3://${var.s3_bucket_name}/${var.cloudtrail_s3_prefix}/"
+    vpc_flow_logs = var.vpc_flow_logs_destination_type == "s3" ? "s3://${var.s3_bucket_name}/${var.vpc_flow_logs_s3_prefix}/" : null
+  }
+}
+
 # IAM 역할 정보
 output "cloudtrail_cloudwatch_role_arn" {
   description = "CloudTrail CloudWatch 로그 IAM 역할 ARN"
