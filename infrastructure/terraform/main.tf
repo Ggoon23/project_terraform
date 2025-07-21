@@ -386,55 +386,29 @@ module "security_log_collectors" {
   project_name = var.project_name
   environment  = var.environment
 
-  # S3 버킷 (로그 저장용)
-  log_bucket_name = module.s3.logging_bucket_name
-  log_bucket_arn  = module.s3.logging_bucket_arn
+  # 필수 인자 추가
+  s3_bucket_name = module.s3.logging_bucket_name
+  kms_key_arn    = aws_kms_key.main.arn
 
   # VPC 설정
   vpc_id = module.vpc.vpc_id
   
   # CloudTrail 설정
   enable_cloudtrail = true
-  cloudtrail_config = {
-    include_global_service_events = true
-    is_multi_region_trail        = true
-    enable_log_file_validation   = true
-    event_version               = "1.05"
-  }
-
+  
   # GuardDuty 설정
   enable_guardduty = true
-  guardduty_config = {
-    enable_s3_protection       = true
-    enable_malware_protection  = true
-    enable_kubernetes_audit    = true
-  }
-
+  
   # Security Hub 설정
   enable_security_hub = true
-  security_hub_config = {
-    enable_default_standards = true
-    enable_cis_standard     = true
-    enable_aws_foundational = true
-  }
-
+  
   # AWS Config 설정
-  enable_config = true
-  config_settings = {
-    delivery_channel_name           = "${var.project_name}-config-delivery"
-    configuration_recorder_name     = "${var.project_name}-config-recorder"
-    include_global_resource_types   = true
-  }
-
+  enable_aws_config = true
+  
   # VPC Flow Logs 설정
   enable_vpc_flow_logs = true
-  vpc_flow_logs_config = {
-    traffic_type         = "ALL"
-    log_destination_type = "s3"
-    log_format          = "$${version} $${account-id} $${interface-id} $${srcaddr} $${dstaddr} $${srcport} $${dstport} $${protocol} $${packets} $${bytes} $${windowstart} $${windowend} $${action} $${flowlogstatus}"
-  }
 
-  tags = {
+  common_tags = {
     Component = "Security-Monitoring"
   }
 }

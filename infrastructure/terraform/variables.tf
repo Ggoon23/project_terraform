@@ -557,3 +557,15 @@ locals {
   # 현재 환경의 설정 적용
   current_env_config = local.environment_defaults[var.environment]
 }
+
+variable "availability_zones" {
+  description = "사용할 가용 영역 목록"
+  type        = list(string)
+  default     = ["ap-northeast-2a", "ap-northeast-2b"]
+}
+
+variable "db_user" {
+  description = "데이터베이스 사용자명"
+  type        = string
+  default     = "dbadmin"
+}
