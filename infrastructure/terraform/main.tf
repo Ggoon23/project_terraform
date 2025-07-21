@@ -82,67 +82,117 @@ module "s3" {
 # =========================================
 # DynamoDB Module - NoSQL 데이터베이스
 # =========================================
-module "dynamodb" {
+
+# 보안 로그 메타데이터 테이블
+module "dynamodb_security_logs" {
   source = "./modules/dynamodb"
 
   project_name = var.project_name
   environment  = var.environment
 
-  # 테이블 설정
-  tables = [
+  # 테이블 기본 설정
+  table_name   = "security-logs-metadata"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "log_id"
+  range_key    = "timestamp"
+  
+  # 속성 정의
+  attributes = [
     {
-      name           = "security-logs-metadata"
-      billing_mode   = "PAY_PER_REQUEST"
-      hash_key       = "log_id"
-      range_key      = "timestamp"
-      
-      attributes = [
-        {
-          name = "log_id"
-          type = "S"
-        },
-        {
-          name = "timestamp"
-          type = "S"
-        },
-        {
-          name = "source"
-          type = "S"
-        }
-      ]
-
-      global_secondary_indexes = [
-        {
-          name     = "source-timestamp-index"
-          hash_key = "source"
-          range_key = "timestamp"
-        }
-      ]
+      name = "log_id"
+      type = "S"
     },
     {
-      name           = "user-sessions"
-      billing_mode   = "PAY_PER_REQUEST"
-      hash_key       = "session_id"
-      
-      attributes = [
-        {
-          name = "session_id"
-          type = "S"
-        }
-      ]
-
-      ttl_enabled        = true
-      ttl_attribute_name = "expires_at"
+      name = "timestamp"
+      type = "S"
+    },
+    {
+      name = "source_service"
+      type = "S"
     }
   ]
 
-  # 보안 설정
-  enable_encryption               = true
-  enable_point_in_time_recovery  = true
-  enable_deletion_protection     = false  # 개발 환경이므로 false
+  # 글로벌 보조 인덱스
+  global_secondary_indexes = [
+    {
+      name               = "source-service-index"
+      hash_key           = "source_service"
+      range_key          = "timestamp"
+      projection_type    = "ALL"
+      read_capacity      = null
+      write_capacity     = null
+      non_key_attributes = []
+    }
+  ]
 
-  tags = {
+  # 보안 및 백업 설정
+  point_in_time_recovery_enabled = true
+  stream_enabled                 = true
+  stream_view_type              = "NEW_AND_OLD_IMAGES"
+  ttl_enabled                   = true
+  ttl_attribute_name            = "expiry_time"
+  
+  # 암호화 설정
+  create_kms_key = true
+  
+  # 태그
+  common_tags = {
     Component = "Database"
+    DataType  = "SecurityLogs"
+  }
+}
+
+# 사용자 세션 테이블
+module "dynamodb_user_sessions" {
+  source = "./modules/dynamodb"
+
+  project_name = var.project_name
+  environment  = var.environment
+
+  # 테이블 기본 설정
+  table_name   = "user-sessions"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "session_id"
+  range_key    = null
+  
+  # 속성 정의
+  attributes = [
+    {
+      name = "session_id"
+      type = "S"
+    },
+    {
+      name = "user_id"
+      type = "S"
+    }
+  ]
+
+  # 글로벌 보조 인덱스
+  global_secondary_indexes = [
+    {
+      name               = "user-id-index"
+      hash_key           = "user_id"
+      range_key          = null
+      projection_type    = "ALL"
+      read_capacity      = null
+      write_capacity     = null
+      non_key_attributes = []
+    }
+  ]
+
+  # 보안 및 백업 설정
+  point_in_time_recovery_enabled = true
+  stream_enabled                 = false
+  ttl_enabled                   = true
+  ttl_attribute_name            = "expires_at"
+  
+  # 암호화 설정
+  create_kms_key = true
+  
+  # 태그
+  common_tags = {
+    Component = "Database"
+    DataType  = "UserSessions"
   }
 }
 

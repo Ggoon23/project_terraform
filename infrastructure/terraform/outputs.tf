@@ -100,11 +100,48 @@ output "s3_buckets_info" {
 output "dynamodb_tables_info" {
   description = "DynamoDB 테이블 정보"
   value = {
-    table_names = module.dynamodb.table_names
-    table_arns  = module.dynamodb.table_arns
-    table_ids   = module.dynamodb.table_ids
-    stream_arns = module.dynamodb.stream_arns
+    security_logs_table = {
+      name       = module.dynamodb_security_logs.table_name
+      arn        = module.dynamodb_security_logs.table_arn
+      id         = module.dynamodb_security_logs.table_id
+      stream_arn = module.dynamodb_security_logs.table_stream_arn
+    }
+    user_sessions_table = {
+      name       = module.dynamodb_user_sessions.table_name
+      arn        = module.dynamodb_user_sessions.table_arn
+      id         = module.dynamodb_user_sessions.table_id
+      stream_arn = module.dynamodb_user_sessions.table_stream_arn
+    }
   }
+}
+
+# 애플리케이션 환경 변수에서도 수정
+output "application_environment_variables" {
+  description = "EKS 애플리케이션에서 사용할 환경 변수"
+  value = {
+    # 데이터베이스 설정
+    DB_HOST     = module.rds.db_instance_endpoint
+    DB_PORT     = tostring(module.rds.db_instance_port)
+    DB_NAME     = var.db_name
+    DB_USER     = var.db_username
+    
+    # S3 설정
+    S3_LOGGING_BUCKET     = module.s3.logging_bucket_name
+    S3_BACKUP_BUCKET      = module.s3.backup_bucket_name
+    S3_APPLICATION_BUCKET = module.s3.application_bucket_name
+    
+    # DynamoDB 설정
+    DYNAMODB_LOGS_TABLE     = module.dynamodb_security_logs.table_name
+    DYNAMODB_SESSIONS_TABLE = module.dynamodb_user_sessions.table_name
+    
+    # AWS 설정
+    AWS_REGION            = var.aws_region
+    AWS_ACCOUNT_ID        = data.aws_caller_identity.current.account_id
+    
+    # KMS 키 정보
+    KMS_KEY_ID            = aws_kms_key.main.key_id
+  }
+  sensitive = true
 }
 
 # =========================================
