@@ -311,9 +311,6 @@ output "access_info" {
   }
 }
 
-# 데이터 소스
-data "aws_region" "current" {}
-
 # 비용 최적화 정보
 output "cost_optimization_info" {
   description = "비용 최적화 관련 정보"

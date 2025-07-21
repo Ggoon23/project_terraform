@@ -430,3 +430,4 @@ variable "event_source_mappings" {
     })
   }))
   default = []
+}
