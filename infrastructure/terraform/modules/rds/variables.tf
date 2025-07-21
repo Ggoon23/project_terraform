@@ -18,7 +18,117 @@ variable "kms_key_arn" {
 }
 
 variable "vpc_id" {
+<<<<<<< HEAD
   description = "VPC ID (VPC Flow Logs용)"
+=======
+  description = "VPC ID"
+  type        = string
+}
+
+variable "database_subnet_ids" {
+  description = "데이터베이스 서브넷 ID 목록"
+  type        = list(string)
+}
+
+# 데이터베이스 기본 설정
+variable "db_identifier" {
+  description = "RDS 인스턴스 식별자"
+  type        = string
+  default     = "my-rds-database"
+}
+
+variable "engine" {
+  description = "데이터베이스 엔진"
+  type        = string
+  default     = "postgres"
+  validation {
+    condition     = contains(["postgres", "mysql", "mariadb"], var.engine)
+    error_message = "지원되는 엔진: postgres, mysql, mariadb"
+  }
+}
+
+variable "engine_version" {
+  description = "데이터베이스 엔진 버전"
+  type        = string
+  default     = "13.21"
+}
+
+variable "instance_class" {
+  description = "RDS 인스턴스 클래스"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "allocated_storage" {
+  description = "할당된 스토리지 크기 (GB)"
+  type        = number
+  default     = 20
+}
+
+variable "max_allocated_storage" {
+  description = "최대 할당 스토리지 크기 (GB)"
+  type        = number
+  default     = 100
+}
+
+variable "storage_type" {
+  description = "스토리지 타입"
+  type        = string
+  default     = "gp2"
+  validation {
+    condition     = contains(["gp2", "gp3", "io1", "io2"], var.storage_type)
+    error_message = "유효한 스토리지 타입: gp2, gp3, io1, io2"
+  }
+}
+
+# 데이터베이스 접속 정보
+variable "database_name" {
+  description = "초기 데이터베이스 이름"
+  type        = string
+  default     = "appdb"
+}
+
+variable "master_username" {
+  description = "마스터 사용자 이름"
+  type        = string
+  default     = "dbadmin"
+}
+
+variable "master_password" {
+  description = "마스터 사용자 비밀번호"
+  type        = string
+  sensitive   = true
+}
+
+variable "port" {
+  description = "데이터베이스 포트"
+  type        = number
+  default     = 5432
+}
+
+# 보안 설정
+variable "allowed_security_groups" {
+  description = "접근 허용할 보안 그룹 ID 목록"
+  type        = list(string)
+  default     = []
+}
+
+variable "allowed_cidr_blocks" {
+  description = "접근 허용할 CIDR 블록 목록"
+  type        = list(string)
+  default     = []
+}
+
+# 고가용성 및 백업
+variable "multi_az" {
+  description = "Multi-AZ 배포 활성화"
+  type        = bool
+  default     = true
+}
+
+variable "availability_zone" {
+  description = "단일 AZ 배포 시 사용할 가용영역"
+>>>>>>> f4d07bbd3188b56a386e684ec090fcc645c1afde
   type        = string
   default     = null
 }
