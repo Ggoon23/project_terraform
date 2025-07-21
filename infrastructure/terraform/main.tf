@@ -9,13 +9,6 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# Data sources
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
 # =========================================
 # VPC Module - 네트워크 기반 구성
 # =========================================
