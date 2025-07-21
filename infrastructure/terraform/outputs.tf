@@ -205,44 +205,6 @@ output "monitoring_info" {
 }
 
 # =========================================
-# 애플리케이션 환경 변수
-# =========================================
-output "application_environment_variables" {
-  description = "EKS 애플리케이션에서 사용할 환경 변수"
-  value = {
-    # 데이터베이스 설정
-    DB_HOST     = module.rds.db_instance_endpoint
-    DB_PORT     = tostring(module.rds.db_instance_port)
-    DB_NAME     = var.db_name
-    DB_USER     = var.db_username
-    
-    # S3 설정
-    S3_LOGGING_BUCKET     = module.s3.logging_bucket_name
-    S3_BACKUP_BUCKET      = module.s3.backup_bucket_name
-    S3_APPLICATION_BUCKET = module.s3.application_bucket_name
-    
-    # DynamoDB 설정
-    DYNAMODB_LOGS_TABLE    = module.dynamodb.table_names["security-logs-metadata"]
-    DYNAMODB_SESSIONS_TABLE = module.dynamodb.table_names["user-sessions"]
-    
-    # AWS 설정
-    AWS_REGION            = var.aws_region
-    AWS_ACCOUNT_ID        = data.aws_caller_identity.current.account_id
-    
-    # KMS 설정
-    KMS_KEY_ID            = aws_kms_key.main.key_id
-    
-    # 로깅 설정
-    LOG_GROUP_APPLICATION = aws_cloudwatch_log_group.application_logs.name
-    LOG_GROUP_SECURITY    = aws_cloudwatch_log_group.security_logs.name
-    
-    # 알림 설정
-    SNS_TOPIC_ARN         = aws_sns_topic.security_alerts.arn
-  }
-  sensitive = true
-}
-
-# =========================================
 # 연결 문자열 및 엔드포인트
 # =========================================
 output "connection_strings" {
