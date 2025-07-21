@@ -6,7 +6,7 @@
 variable "project_name" {
   description = "프로젝트 이름"
   type        = string
-  default     = "security-monitoring"
+  default     = "WALB"
 }
 
 variable "environment" {
@@ -76,20 +76,20 @@ variable "rds_instance_class" {
 variable "db_name" {
   description = "데이터베이스 이름"
   type        = string
-  default     = "security_monitoring"
+  default     = "WALB_DB"
 }
 
 variable "db_username" {
   description = "데이터베이스 사용자명"
   type        = string
-  default     = "admin"
+  default     = "dbadmin"
 }
 
 variable "db_password" {
   description = "데이터베이스 비밀번호"
   type        = string
   sensitive   = true
-  default     = "ChangeMePlease123!"
+  default     = "password123!"
   validation {
     condition     = length(var.db_password) >= 8
     error_message = "Database password must be at least 8 characters long."
@@ -123,7 +123,7 @@ variable "allowed_ssh_cidrs" {
 variable "lambda_runtime" {
   description = "Lambda 함수 런타임"
   type        = string
-  default     = "python3.9"
+  default     = "python3.10"
 }
 
 variable "lambda_timeout" {
@@ -493,12 +493,6 @@ variable "additional_tags" {
   description = "추가 태그"
   type        = map(string)
   default     = {}
-}
-
-variable "cost_center" {
-  description = "비용 센터"
-  type        = string
-  default     = "IT보안2기"
 }
 
 variable "owner" {

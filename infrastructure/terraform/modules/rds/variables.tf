@@ -78,7 +78,7 @@ variable "database_name" {
 variable "master_username" {
   description = "마스터 사용자 이름"
   type        = string
-  default     = "dbadmin"
+  default     = "admin"
 }
 
 variable "master_password" {
