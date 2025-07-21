@@ -1,0 +1,10 @@
+vpc_cidr           = "10.0.0.0/16"
+public_subnets     = ["10.0.1.0/24", "10.0.2.0/24"]
+availability_zones = ["ap-northeast-2a", "ap-northeast-2b"]
+cluster_name       = "my-eks-cluster"
+db_name            = "mydb"
+db_user            = "dbadmin"
+db_password        = "MySecurePassword123!"
+aws_region         = "ap-northeast-2"
+environment        = "dev"
+project_name       = "dev-app"
