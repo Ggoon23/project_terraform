@@ -176,21 +176,15 @@ resource "aws_security_group" "node_group" {
   vpc_id      = var.vpc_id
   description = "Security group for EKS node group"
 
-  # 클러스터와의 통신
-  ingress {
-    from_port                = 0
-    to_port                  = 65535
-    protocol                 = "tcp"
-    source_security_group_id = aws_security_group.cluster.id
-    description              = "Communication with EKS cluster"
-  }
+  # ❌ 클러스터와 통신 부분 제거 (source_security_group_id는 여기서 사용 금지)
+  # -> 아래에서 aws_security_group_rule로 분리
 
   # 노드간 통신
   ingress {
-    from_port = 0
-    to_port   = 65535
-    protocol  = "tcp"
-    self      = true
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    self        = true
     description = "Communication between nodes"
   }
 
@@ -223,6 +217,18 @@ resource "aws_security_group" "node_group" {
     create_before_destroy = true
   }
 }
+
+# 클러스터에서 노드 그룹으로 통신 허용
+resource "aws_security_group_rule" "node_group_from_cluster" {
+  type                     = "ingress"
+  from_port               = 0
+  to_port                 = 65535
+  protocol                = "tcp"
+  security_group_id       = aws_security_group.node_group.id
+  source_security_group_id = aws_security_group.cluster.id
+  description             = "Communication with EKS cluster"
+}
+
 
 # 시작 템플릿 (노드 그룹용)
 resource "aws_launch_template" "node_group" {

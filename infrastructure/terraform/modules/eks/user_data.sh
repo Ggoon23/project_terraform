@@ -27,7 +27,7 @@ cat <<EOF > /etc/docker/daemon.json
 {
   "log-driver": "awslogs",
   "log-opts": {
-    "awslogs-group": "/aws/eks/${CLUSTER_NAME}/docker",
+    "awslogs-group": "/aws/eks/${cluster_name}/docker",
     "awslogs-region": "$(curl -s http://169.254.169.254/latest/meta-data/placement/region)"
   },
   "live-restore": true,
@@ -107,14 +107,14 @@ echo "tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime 0 0" >> /etc/fst
 echo "tmpfs /var/tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime 0 0" >> /etc/fstab
 
 # CloudWatch 로그 그룹 생성 (Docker 로그용)
-aws logs create-log-group --log-group-name "/aws/eks/${CLUSTER_NAME}/docker" --region $(curl -s http://169.254.169.254/latest/meta-data/placement/region) || true
+aws logs create-log-group --log-group-name "/aws/eks/${cluster_name}/docker" --region $(curl -s http://169.254.169.254/latest/meta-data/placement/region) || true
 
 # EKS 노드 부트스트랩
-/etc/eks/bootstrap.sh "${CLUSTER_NAME}" \
+/etc/eks/bootstrap.sh "${cluster_name}" \
   --container-runtime docker \
   --kubelet-extra-args '--node-labels=node.kubernetes.io/lifecycle=normal' \
-  --b64-cluster-ca "${CLUSTER_CA}" \
-  --apiserver-endpoint "${CLUSTER_ENDPOINT}"
+  --b64-cluster-ca "${cluster_ca}" \
+  --apiserver-endpoint "${cluster_endpoint}"
 
 # 로그 수집 설정 (ISMS-P 컴플라이언스)
 cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
@@ -129,17 +129,17 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
         "collect_list": [
           {
             "file_path": "/var/log/messages",
-            "log_group_name": "/aws/eks/${CLUSTER_NAME}/system",
+            "log_group_name": "/aws/eks/${cluster_name}/system",
             "log_stream_name": "{instance_id}/messages"
           },
           {
             "file_path": "/var/log/secure",
-            "log_group_name": "/aws/eks/${CLUSTER_NAME}/security",
+            "log_group_name": "/aws/eks/${cluster_name}/security",
             "log_stream_name": "{instance_id}/secure"
           },
           {
             "file_path": "/var/log/audit/audit.log",
-            "log_group_name": "/aws/eks/${CLUSTER_NAME}/audit",
+            "log_group_name": "/aws/eks/${cluster_name}/audit",
             "log_stream_name": "{instance_id}/audit"
           }
         ]
@@ -209,7 +209,7 @@ chmod 644 /etc/docker/daemon.json
 chmod 600 /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 
 # 시스템 정보 로깅 (디버깅용)
-echo "EKS Node Bootstrap completed for cluster: ${CLUSTER_NAME}" > /var/log/eks-bootstrap.log
+echo "EKS Node Bootstrap completed for cluster: ${cluster_name}" > /var/log/eks-bootstrap.log
 echo "Timestamp: $(date)" >> /var/log/eks-bootstrap.log
 echo "Instance ID: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)" >> /var/log/eks-bootstrap.log
 echo "Instance Type: $(curl -s http://169.254.169.254/latest/meta-data/instance-type)" >> /var/log/eks-bootstrap.log
