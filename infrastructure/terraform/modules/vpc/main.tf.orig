@@ -16,9 +16,6 @@ resource "aws_vpc" "main" {
     Name = "${var.project_name}-vpc"
     Type = "Main VPC"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 인터넷 게이트웨이 생성
@@ -28,9 +25,6 @@ resource "aws_internet_gateway" "main" {
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-igw"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 퍼블릭 서브넷 생성 (Multi-AZ)
@@ -46,9 +40,6 @@ resource "aws_subnet" "public" {
     Type = "Public"
     Tier = "Web"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 프라이빗 서브넷 생성 (Multi-AZ)
@@ -63,9 +54,6 @@ resource "aws_subnet" "private" {
     Type = "Private"
     Tier = "Application"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 데이터베이스 서브넷 생성 (Multi-AZ)
@@ -80,9 +68,6 @@ resource "aws_subnet" "database" {
     Type = "Database"
     Tier = "Data"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # Elastic IP for NAT Gateway
@@ -95,9 +80,6 @@ resource "aws_eip" "nat" {
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-nat-eip-${count.index + 1}"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # NAT Gateway 생성 (각 AZ마다)
@@ -111,9 +93,6 @@ resource "aws_nat_gateway" "main" {
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-nat-gw-${count.index + 1}"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 퍼블릭 라우팅 테이블
@@ -129,23 +108,18 @@ resource "aws_route_table" "public" {
     Name = "${var.project_name}-public-rt"
     Type = "Public"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 프라이빗 라우팅 테이블 (각 AZ마다)
 resource "aws_route_table" "private" {
-  # count  = var.enable_nat_gateway ? length(var.private_subnet_cidrs) : 1
-  count = length(var.private_subnet_cidrs)
+  count  = var.enable_nat_gateway ? length(var.private_subnet_cidrs) : 1
   vpc_id = aws_vpc.main.id
 
   dynamic "route" {
     for_each = var.enable_nat_gateway ? [1] : []
     content {
       cidr_block     = "0.0.0.0/0"
-      # nat_gateway_id = aws_nat_gateway.main[count.index].id
-      nat_gateway_id = element(aws_nat_gateway.main[*].id, count.index % length(aws_nat_gateway.main))
+      nat_gateway_id = aws_nat_gateway.main[count.index].id
     }
   }
 
@@ -153,9 +127,6 @@ resource "aws_route_table" "private" {
     Name = "${var.project_name}-private-rt-${count.index + 1}"
     Type = "Private"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 데이터베이스 라우팅 테이블
@@ -166,9 +137,6 @@ resource "aws_route_table" "database" {
     Name = "${var.project_name}-db-rt"
     Type = "Database"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 퍼블릭 서브넷과 라우팅 테이블 연결
@@ -209,7 +177,7 @@ resource "aws_cloudwatch_log_group" "vpc_flow_log" {
 
   # 기존 리소스 무시 설정
   lifecycle {
-    ignore_changes = [name, tags_all]
+    ignore_changes = [name]
   }
 
   tags = merge(var.common_tags, {

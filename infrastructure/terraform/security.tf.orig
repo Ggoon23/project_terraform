@@ -12,7 +12,7 @@ resource "aws_security_group_rule" "eks_to_rds" {
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"
-  source_security_group_id = module.rds.security_group_id
+  source_security_group_id = module.rds.db_security_group_id
   security_group_id        = module.eks.cluster_security_group_id
   description              = "EKS to RDS PostgreSQL access"
 }
@@ -61,7 +61,7 @@ resource "aws_security_group_rule" "rds_from_eks" {
   to_port                  = 5432
   protocol                 = "tcp"
   source_security_group_id = module.eks.cluster_security_group_id
-  security_group_id        = module.rds.security_group_id
+  security_group_id        = module.rds.db_security_group_id
   description              = "Allow EKS access to RDS"
 }
 
@@ -71,8 +71,8 @@ resource "aws_security_group_rule" "rds_from_lambda" {
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"
-  source_security_group_id = module.lambda_log_processor.security_group_id
-  security_group_id        = module.rds.security_group_id
+  source_security_group_id = module.lambda.security_group_id
+  security_group_id        = module.rds.db_security_group_id
   description              = "Allow Lambda access to RDS"
 }
 
@@ -84,7 +84,7 @@ resource "aws_security_group_rule" "rds_from_bastion" {
   to_port                  = 5432
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.bastion.id
-  security_group_id        = module.rds.security_group_id
+  security_group_id        = module.rds.db_security_group_id
   description              = "Allow Bastion access to RDS for management"
 }
 
@@ -98,8 +98,8 @@ resource "aws_security_group_rule" "lambda_to_rds" {
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"
-  source_security_group_id = module.rds.security_group_id
-  security_group_id        = module.lambda_log_processor.security_group_id
+  source_security_group_id = module.rds.db_security_group_id
+  security_group_id        = module.lambda.security_group_id
   description              = "Lambda to RDS access"
 }
 
@@ -110,7 +110,7 @@ resource "aws_security_group_rule" "lambda_https_egress" {
   to_port           = 443
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = module.lambda_log_processor.security_group_id
+  security_group_id = module.lambda.security_group_id
   description       = "Lambda HTTPS outbound for AWS API calls"
 }
 

@@ -11,6 +11,9 @@ resource "aws_kms_key" "lambda" {
     Name = "${var.project_name}-lambda-kms-key"
     Use  = "Lambda Encryption"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 resource "aws_kms_alias" "lambda" {
@@ -153,14 +156,16 @@ resource "aws_security_group" "lambda" {
 
   lifecycle {
     create_before_destroy = true
+    ignore_changes = [tags_all]
   }
+
 }
 
 # Lambda 함수 코드 압축 (로컬 파일일 경우)
 data "archive_file" "lambda_zip" {
   count       = var.source_path != null ? 1 : 0
   type        = "zip"
-  source_dir  = var.source_path
+  source_dir  = "${path.module}/src"   
   output_path = "${path.module}/lambda_function.zip"
 }
 
@@ -245,7 +250,9 @@ resource "aws_lambda_function" "main" {
     Name = var.function_name
     Type = "Lambda Function"
   })
-
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic,
     aws_cloudwatch_log_group.lambda
@@ -260,6 +267,9 @@ resource "aws_cloudwatch_log_group" "lambda" {
   tags = merge(var.common_tags, {
     Name = "${var.function_name}-logs"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 # Lambda 별칭 (버전 관리)

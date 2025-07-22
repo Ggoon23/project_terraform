@@ -11,9 +11,6 @@ resource "aws_kms_key" "dynamodb" {
     Name = "${var.project_name}-dynamodb-kms-key"
     Use  = "DynamoDB Encryption"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 resource "aws_kms_alias" "dynamodb" {
@@ -98,8 +95,7 @@ resource "aws_dynamodb_table" "main" {
   })
 
   lifecycle {
-    prevent_destroy = false  
-    ignore_changes = [tags_all]
+    prevent_destroy = false
   }
 }
 
@@ -234,7 +230,17 @@ resource "aws_cloudwatch_metric_alarm" "dynamodb_consumed_read_capacity" {
   tags = var.common_tags
 }
 
-# DynamoDB Backup 설정(제거)
+# DynamoDB Backup 설정
+resource "aws_dynamodb_backup" "main" {
+  count      = var.create_backup ? 1 : 0
+  name       = "${aws_dynamodb_table.main.name}-backup-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+  table_name = aws_dynamodb_table.main.name
+
+  tags = merge(var.common_tags, {
+    Name = "${aws_dynamodb_table.main.name}-backup"
+    Type = "DynamoDB Backup"
+  })
+}
 
 # Global Tables 설정 (선택사항)
 resource "aws_dynamodb_global_table" "main" {
@@ -264,15 +270,12 @@ resource "aws_dynamodb_table_replica" "main" {
 
   kms_key_arn                = var.replica_kms_key_arn
   point_in_time_recovery     = var.replica_point_in_time_recovery
-  # table_class               = var.replica_table_class
+  table_class               = var.replica_table_class
 
   tags = merge(var.common_tags, {
     Name = "${aws_dynamodb_table.main.name}-replica"
     Type = "DynamoDB Replica"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # IAM 역할 (DynamoDB 접근용)

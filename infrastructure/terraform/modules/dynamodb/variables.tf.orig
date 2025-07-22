@@ -310,8 +310,9 @@ variable "replica_table_class" {
   type        = string
   default     = "STANDARD"
   validation {
-    condition     = contains(["STANDARD", "STANDARD_INFREQUENT_ACCESS"], var.replica_table_class)
-    error_message = "replica_table_class는 STANDARD 또는 STANDARD_INFREQUENT_ACCESS여야 합니다."
+    #condition     = contains(["STANDARD", "STANDARD_INFREQUENT_ACCESS"], var.replica_table_class)
+    condition     = contains(["STANDARD", "STANDARD_INFREQUENT_ACCESS"])
+    error_message = "테이블 클래스는 STANDARD 또는 STANDARD_INFREQUENT_ACCESS여야 합니다."
   }
 }
 
@@ -347,8 +348,9 @@ variable "table_class" {
   type        = string
   default     = "STANDARD"
   validation {
-    condition     = contains(["STANDARD", "STANDARD_INFREQUENT_ACCESS"], var.table_class)
-    error_message = "table_class는 STANDARD 또는 STANDARD_INFREQUENT_ACCESS여야 합니다."
+    # condition     = contains(["STANDARD", "STANDARD_INFREQUENT_ACCESS"], var.table_class)
+    condition     = contains(["STANDARD", "STANDARD_INFREQUENT_ACCESS"])
+    error_message = "테이블 클래스는 STANDARD 또는 STANDARD_INFREQUENT_ACCESS여야 합니다."
   }
 }
 

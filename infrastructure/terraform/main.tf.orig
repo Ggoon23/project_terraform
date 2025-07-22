@@ -39,31 +39,43 @@ module "s3" {
   source = "./modules/s3"
 
   project_name = var.project_name
+  environment  = var.environment
 
   # 로깅용 S3 버킷들
-  # create_logging_bucket     = true
-  create_backups_bucket     = true
-  # create_application_bucket = true
-  create_artifacts_bucket   = true
+  create_logging_bucket     = true
+  create_backup_bucket      = true
+  create_application_bucket = true
 
   # 보안 설정
   enable_versioning           = true
-  # enable_server_side_encryption = true
+  enable_server_side_encryption = true
   enable_mfa_delete          = false
-  # enable_public_access_block = true
+  enable_public_access_block = true
 
-  # 라이프사이클 관련 변수 (lifecycle_rules 대신)
-  transition_to_ia_days           = 30
-  transition_to_glacier_days      = 90
-  transition_to_deep_archive_days = 180
-  log_retention_days              = 365
-  backup_retention_days           = 2555
+  # 라이프사이클 정책
+  lifecycle_rules = [
+    {
+      id     = "security_logs"
+      status = "Enabled"
+      transitions = [
+        {
+          days          = 30
+          storage_class = "STANDARD_IA"
+        },
+        {
+          days          = 90
+          storage_class = "GLACIER"
+        },
+        {
+          days          = 365
+          storage_class = "DEEP_ARCHIVE"
+        }
+      ]
+    }
+  ]
 
-  # 라이프사이클 정책(제거)
-
-  common_tags = {
+  tags = {
     Component = "Storage"
-    Environment = var.environment
   }
 }
 
@@ -191,36 +203,30 @@ module "rds" {
   source = "./modules/rds"
 
   project_name = var.project_name
-  # environment  = var.environment
+  environment  = var.environment
 
   # 네트워크 설정
   vpc_id                = module.vpc.vpc_id
   database_subnet_ids   = module.vpc.database_subnet_ids
   
   # 보안 그룹 설정
-  # allowed_security_group_ids = [
-    # module.eks.cluster_security_group_id,
-    # module.lambda.security_group_id
-  # ]
-  allowed_security_groups = [
+  allowed_security_group_ids = [
     module.eks.cluster_security_group_id,
-    module.lambda_log_processor.security_group_id
+    module.lambda.security_group_id
   ]
+
   # 데이터베이스 설정
   engine                 = "postgres"
   engine_version         = "15.4"
   instance_class         = var.rds_instance_class
   allocated_storage      = 20
   max_allocated_storage  = 100
+  storage_encrypted      = true
 
   # 인증 설정
-  # db_name  = var.db_name
-  # username = var.db_username
-  # master_password = var.db_password  # 실제 환경에서는 AWS Secrets Manager 사용 권장
-
-  database_name     = var.db_name           # ✅ 수정됨
-  master_username   = var.db_username       # ✅ 수정됨
-  master_password   = var.db_password       # ✅ 수정됨
+  db_name  = var.db_name
+  username = var.db_username
+  password = var.db_password  # 실제 환경에서는 AWS Secrets Manager 사용 권장
 
   # 백업 설정
   backup_retention_period = 7
@@ -234,104 +240,109 @@ module "rds" {
   # Multi-AZ 설정 (운영 환경에서는 true 권장)
   multi_az = false
 
-  common_tags = {
+  tags = {
     Component = "Database"
-    Environment = var.environment
   }
 }
 
 # =========================================
-# Lambda Module - log-processor 함수
+# Lambda Module - 서버리스 함수
 # =========================================
-module "lambda_log_processor" {
+module "lambda" {
   source = "./modules/lambda"
 
-  function_name = "log-processor"
-  project_name  = var.project_name
-  runtime       = "python3.9"
-  handler       = "handler.lambda_handler"
-  timeout       = 300
-  memory_size   = 512
-  source_path   = "../lambda/log-processor"
+  project_name = var.project_name
+  environment  = var.environment
 
-  environment_variables = {
-    # DYNAMODB_TABLE = module.dynamodb_security_logs.table_name["security-logs-metadata"]
-    DYNAMODB_TABLE = module.dynamodb_security_logs.table_name
-    S3_BUCKET      = module.s3.logs_bucket_id
-    RDS_ENDPOINT   = module.rds.db_instance_endpoint
-  }
+  # 네트워크 설정
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnet_ids
 
-  vpc_config = {
-    vpc_id                        = module.vpc.vpc_id
-    subnet_ids                    = module.vpc.private_subnet_ids
-    additional_security_group_ids = []
-  }
+  # Lambda 함수들
+  functions = [
+    {
+      function_name = "log-processor"
+      description   = "Process security logs from various sources"
+      runtime       = "python3.9"
+      handler       = "handler.lambda_handler"
+      source_path   = "../lambda/log-processor"
+      timeout       = 300
+      memory_size   = 512
 
-  custom_policy_json = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Query",
-          "dynamodb:Scan"
-        ]
-        # Resource = module.dynamodb_security_logs.table_arn["*"]
-        Resource = module.dynamodb_security_logs.table_arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-        Resource = "${module.s3.logs_bucket_arn}/*"
+      environment_variables = {
+        DYNAMODB_TABLE = module.dynamodb.table_names["security-logs-metadata"]
+        S3_BUCKET      = module.s3.logging_bucket_name
+        RDS_ENDPOINT   = module.rds.db_instance_endpoint
       }
-    ]
-  })
 
-  common_tags = {
-    Component   = "Serverless"
-    Environment = var.environment
+      # 트리거 설정
+      s3_trigger = {
+        bucket = module.s3.logging_bucket_name
+        events = ["s3:ObjectCreated:*"]
+        filter_prefix = "logs/"
+      }
+    },
+    {
+      function_name = "security-alert"
+      description   = "Send security alerts based on log analysis"
+      runtime       = "python3.9"
+      handler       = "handler.lambda_handler"
+      source_path   = "../lambda/security-alert"
+      timeout       = 60
+      memory_size   = 256
+
+      environment_variables = {
+        SLACK_WEBHOOK_URL = var.slack_webhook_url
+        EMAIL_TOPIC_ARN   = aws_sns_topic.security_alerts.arn
+      }
+    }
+  ]
+
+  # IAM 권한
+  additional_policies = [
+    {
+      policy_name = "DynamoDBAccess"
+      policy_json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Action = [
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:DeleteItem",
+              "dynamodb:Query",
+              "dynamodb:Scan"
+            ]
+            Resource = module.dynamodb.table_arns["*"]
+          }
+        ]
+      })
+    },
+    {
+      policy_name = "S3Access"
+      policy_json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Action = [
+              "s3:GetObject",
+              "s3:PutObject",
+              "s3:DeleteObject"
+            ]
+            Resource = "${module.s3.logging_bucket_arn}/*"
+          }
+        ]
+      })
+    }
+  ]
+
+  tags = {
+    Component = "Serverless"
   }
 }
-
-# =========================================
-# Lambda Module - security-alert 함수
-# =========================================
-module "lambda_security_alert" {
-  source = "./modules/lambda"
-
-  function_name = "security-alert"
-  project_name  = var.project_name
-  runtime       = "python3.9"
-  handler       = "handler.lambda_handler"
-  timeout       = 60
-  memory_size   = 256
-  source_path   = "../lambda/security-alert"
-
-  environment_variables = {
-    SLACK_WEBHOOK_URL = var.slack_webhook_url
-    EMAIL_TOPIC_ARN   = aws_sns_topic.security_alerts.arn
-  }
-
-  vpc_config = {
-    vpc_id                        = module.vpc.vpc_id
-    subnet_ids                    = module.vpc.private_subnet_ids
-    additional_security_group_ids = []
-  }
-
-  common_tags = {
-    Component   = "Serverless"
-    Environment = var.environment
-  }
-}
-
 
 # =========================================
 # EKS Module - Kubernetes 클러스터
@@ -348,9 +359,8 @@ module "eks" {
 
   # 네트워크 설정
   vpc_id                    = module.vpc.vpc_id
-  private_subnet_ids = module.vpc.private_subnet_ids
   subnet_ids               = module.vpc.private_subnet_ids
-  # control_plane_subnet_ids = module.vpc.private_subnet_ids
+  control_plane_subnet_ids = module.vpc.private_subnet_ids
 
   # 보안 설정
   cluster_endpoint_private_access = true
@@ -366,6 +376,52 @@ module "eks" {
     "scheduler"
   ]
 
+  # 노드 그룹 설정
+  node_groups = [
+    {
+      name           = "general-purpose"
+      instance_types = ["t3.medium"]
+      min_size       = 1
+      max_size       = 3
+      desired_size   = 2
+
+      # 보안 설정
+      remote_access = {
+        ec2_ssh_key = var.ec2_key_pair_name
+        source_security_group_ids = [aws_security_group.bastion.id]
+      }
+
+      # 라벨 및 태인트
+      labels = {
+        Environment = var.environment
+        NodeGroup   = "general-purpose"
+      }
+    }
+  ]
+
+  # 추가 보안 그룹 규칙
+  additional_security_group_rules = [
+    {
+      description = "RDS Access"
+      type        = "egress"
+      from_port   = 5432
+      to_port     = 5432
+      protocol    = "tcp"
+      cidr_blocks = [var.vpc_cidr]
+    },
+    {
+      description = "HTTPS Outbound"
+      type        = "egress"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+
+  tags = {
+    Component = "Container-Platform"
+  }
 }
 
 # =========================================
@@ -378,7 +434,7 @@ module "security_log_collectors" {
   environment  = var.environment
 
   # 필수 인자 추가
-  s3_bucket_name = module.s3.logs_bucket_id
+  s3_bucket_name = module.s3.logging_bucket_name
   kms_key_arn    = aws_kms_key.main.arn
 
   # VPC 설정
@@ -535,7 +591,7 @@ resource "aws_iam_role" "eks_app_role" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Effect = "Allow"
         Principal = {
-          Federated = module.eks.oidc_provider_arn
+          Federated = module.eks.cluster_oidc_issuer_arn
         }
         Condition = {
           StringEquals = {
@@ -568,8 +624,8 @@ resource "aws_iam_role_policy" "eks_app_policy" {
           "s3:ListBucket"
         ]
         Resource = [
-          module.s3.logs_bucket_arn,
-          "${module.s3.logs_bucket_arn}/*"
+          module.s3.logging_bucket_arn,
+          "${module.s3.logging_bucket_arn}/*"
         ]
       },
       {
@@ -582,8 +638,7 @@ resource "aws_iam_role_policy" "eks_app_policy" {
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
-        # Resource = module.dynamodb_security_logs.table_arn["*"]  # 또는 values(...)
-        Resource = module.dynamodb_security_logs.table_arn
+        Resource = module.dynamodb.table_arns["*"]
       },
       {
         Effect = "Allow"

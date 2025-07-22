@@ -25,6 +25,12 @@ variable "aws_region" {
   default     = "ap-northeast-2"
 }
 
+variable "cost_center" {
+  description = "비용 센터 태그"
+  type        = string
+  default     = "default-cost-center"  # 필요시 수정
+}
+
 # =========================================
 # VPC 네트워크 설정
 # =========================================

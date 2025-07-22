@@ -30,7 +30,7 @@ resource "aws_cloudtrail" "main" {
         for_each = var.cloudtrail_s3_data_events
         content {
           type   = "AWS::S3::Object"
-          values = [data_resource.value]
+          values = data_resource.value
         }
       }
 
@@ -38,32 +38,25 @@ resource "aws_cloudtrail" "main" {
         for_each = var.cloudtrail_lambda_data_events
         content {
           type   = "AWS::Lambda::Function"
-          values = [data_resource.value]
+          values = data_resource.value
         }
       }
     }
   }
-  # CloudWatch Logs 통합
-  cloud_watch_logs_group_arn = var.cloudtrail_cloudwatch_logs_enabled ? aws_cloudwatch_log_group.cloudtrail[0].arn : null
-  cloud_watch_logs_role_arn  = var.cloudtrail_cloudwatch_logs_enabled ? aws_iam_role.cloudtrail_cloudwatch[0].arn : null
 
   # CloudWatch Logs 통합
-  # dynamic "cloud_watch_logs_group_arn" {
-
-    # for_each = var.cloudtrail_cloudwatch_logs_enabled ? [1] : []
-    # content {
-      # cloud_watch_logs_group_arn = aws_cloudwatch_log_group.cloudtrail[0].arn
-      # cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_cloudwatch[0].arn
-    # }
-  # }
+  dynamic "cloud_watch_logs_group_arn" {
+    for_each = var.cloudtrail_cloudwatch_logs_enabled ? [1] : []
+    content {
+      cloud_watch_logs_group_arn = aws_cloudwatch_log_group.cloudtrail[0].arn
+      cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_cloudwatch[0].arn
+    }
+  }
 
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-cloudtrail"
     Type = "Security Audit Trail"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 
   depends_on = [aws_s3_bucket_policy.cloudtrail_bucket]
 }
@@ -77,9 +70,6 @@ resource "aws_cloudwatch_log_group" "cloudtrail" {
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-cloudtrail-logs"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # CloudTrail CloudWatch 로그 IAM 역할
@@ -188,9 +178,6 @@ resource "aws_guardduty_detector" "main" {
     Name = "${var.project_name}-guardduty"
     Type = "Threat Detection"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # Splunk Forwarder용 IAM 역할 생성 (추가 필요)
@@ -253,9 +240,6 @@ resource "aws_s3_bucket" "guardduty_findings" {
     Name = "${var.project_name}-guardduty-findings"
     Type = "Security Findings"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 resource "random_id" "bucket_suffix" {
@@ -269,10 +253,10 @@ resource "aws_securityhub_account" "main" {
 
   control_finding_generator = var.security_hub_control_finding_generator
 
-  # tags = merge(var.common_tags, {
-    # Name = "${var.project_name}-security-hub"
-    # Type = "Security Hub"
-  # })
+  tags = merge(var.common_tags, {
+    Name = "${var.project_name}-security-hub"
+    Type = "Security Hub"
+  })
 }
 
 # Security Hub 표준 구독
@@ -406,9 +390,6 @@ resource "aws_flow_log" "main" {
     Name = "${var.project_name}-vpc-flow-logs"
     Type = "Network Security Logs"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # VPC Flow Logs용 CloudWatch 로그 그룹
@@ -420,9 +401,6 @@ resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-vpc-flow-logs"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # VPC Flow Logs IAM 역할
@@ -556,7 +534,4 @@ resource "aws_cloudwatch_event_bus" "security" {
     Name = "${var.project_name}-security-event-bus"
     Type = "Security Event Bus"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }

@@ -10,6 +10,9 @@ resource "aws_db_subnet_group" "main" {
     Name = "${var.project_name}-db-subnet-group"
     Type = "Database"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 # RDS 파라미터 그룹
@@ -66,6 +69,9 @@ resource "aws_kms_key" "rds" {
     Name = "${var.project_name}-rds-kms-key"
     Use  = "RDS Encryption"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 resource "aws_kms_alias" "rds" {
@@ -105,7 +111,9 @@ resource "aws_security_group" "rds" {
 
   lifecycle {
     create_before_destroy = true
+    ignore_changes = [tags_all]
   }
+
 }
 
 # RDS 인스턴스
@@ -172,10 +180,6 @@ resource "aws_db_instance" "main" {
     Name = "${var.project_name}-rds-instance"
     Type = "Database"
   })
-
-  lifecycle {
-    ignore_changes = [password]
-  }
 
   depends_on = [aws_cloudwatch_log_group.rds]
 }

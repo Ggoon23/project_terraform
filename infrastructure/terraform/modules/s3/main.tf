@@ -11,6 +11,9 @@ resource "aws_kms_key" "s3" {
     Name = "${var.project_name}-s3-kms-key"
     Use  = "S3 Bucket Encryption"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 resource "aws_kms_alias" "s3" {
@@ -29,6 +32,9 @@ resource "aws_s3_bucket" "logs" {
     Purpose = "Log Storage"
     Type    = "Security Logs"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 resource "aws_s3_bucket" "artifacts" {
@@ -41,6 +47,9 @@ resource "aws_s3_bucket" "artifacts" {
     Purpose = "Build Artifacts"
     Type    = "Application Data"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 resource "aws_s3_bucket" "backups" {
@@ -53,6 +62,9 @@ resource "aws_s3_bucket" "backups" {
     Purpose = "Database Backups"
     Type    = "Backup Data"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 # 랜덤 ID (버킷 이름 충돌 방지)
@@ -276,6 +288,9 @@ resource "aws_s3_bucket" "access_logs" {
     Purpose = "S3 Access Logs"
     Type    = "Audit Logs"
   })
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "access_logs" {

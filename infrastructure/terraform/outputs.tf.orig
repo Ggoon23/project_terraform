@@ -15,7 +15,7 @@ output "vpc_info" {
     database_subnet_ids  = module.vpc.database_subnet_ids
     internet_gateway_id  = module.vpc.internet_gateway_id
     nat_gateway_ids      = module.vpc.nat_gateway_ids
-    route_table_ids      = module.vpc.private_route_table_ids    # modules/vpc/outputs.tf 에 있는 route_table_id 들 중에 이건지 확실 x
+    route_table_ids      = module.vpc.route_table_ids
   }
 }
 
@@ -32,11 +32,11 @@ output "eks_cluster_info" {
     cluster_version               = module.eks.cluster_version
     cluster_security_group_id     = module.eks.cluster_security_group_id
     cluster_oidc_issuer_url       = module.eks.cluster_oidc_issuer_url
-    oidc_provider_arn             = module.eks.oidc_provider_arn
-    node_group_arn                = module.eks.node_group_arn
-    node_group_status             = module.eks.node_group_status
-    node_group_capacity_type      = module.eks.node_group_capacity_type
-    node_group_instance_types     = module.eks.node_group_instance_types
+    cluster_oidc_issuer_arn       = module.eks.cluster_oidc_issuer_arn
+    node_group_arn               = module.eks.node_group_arn
+    node_group_status            = module.eks.node_group_status
+    node_group_capacity_type     = module.eks.node_group_capacity_type
+    node_group_instance_types    = module.eks.node_group_instance_types
   }
   sensitive = true
 }
@@ -55,14 +55,13 @@ output "rds_info" {
   value = {
     db_instance_endpoint          = module.rds.db_instance_endpoint
     db_instance_arn              = module.rds.db_instance_arn
-    db_instance_id               = module.rds.db_instance_id
+    db_instance_identifier       = module.rds.db_instance_identifier
     db_instance_port             = module.rds.db_instance_port
-    engine                       = module.rds.engine_info.engine
-    engine_version               = module.rds.engine_info.engine_version
-    # engine_info = module.rds.engine_info
+    db_instance_engine           = module.rds.db_instance_engine
+    db_instance_engine_version   = module.rds.db_instance_engine_version
     db_subnet_group_name         = module.rds.db_subnet_group_name
-    parameter_group_name         = module.rds.parameter_group_name
-    security_group_id            = module.rds.security_group_id
+    db_parameter_group_name      = module.rds.db_parameter_group_name
+    db_security_group_id         = module.rds.db_security_group_id
   }
   sensitive = true
 }
@@ -85,13 +84,13 @@ output "rds_connection_info" {
 output "s3_buckets_info" {
   description = "S3 버킷 정보"
   value = {
-    logs_bucket_id         = module.s3.logs_bucket_id
-    logs_bucket_arn          = module.s3.logs_bucket_arn
-    logs_bucket_domain_name  = module.s3.logs_bucket_domain_name
-    backups_bucket_domain_name         = module.s3.backups_bucket_domain_name
-    backups_bucket_arn           = module.s3.backups_bucket_arn
-    artifacts_bucket_domain_name     = module.s3.artifacts_bucket_domain_name
-    artifacts_bucket_arn     = module.s3.artifacts_bucket_arn
+    logging_bucket_name         = module.s3.logging_bucket_name
+    logging_bucket_arn          = module.s3.logging_bucket_arn
+    logging_bucket_domain_name  = module.s3.logging_bucket_domain_name
+    backup_bucket_name          = module.s3.backup_bucket_name
+    backup_bucket_arn           = module.s3.backup_bucket_arn
+    application_bucket_name     = module.s3.application_bucket_name
+    application_bucket_arn      = module.s3.application_bucket_arn
   }
 }
 
@@ -127,9 +126,9 @@ output "application_environment_variables" {
     DB_USER     = var.db_username
     
     # S3 설정
-    S3_LOGGING_BUCKET     = module.s3.logs_bucket_id
-    S3_BACKUP_BUCKET      = module.s3.backups_bucket_domain_name
-    S3_APPLICATION_BUCKET = module.s3.artifacts_bucket_domain_name
+    S3_LOGGING_BUCKET     = module.s3.logging_bucket_name
+    S3_BACKUP_BUCKET      = module.s3.backup_bucket_name
+    S3_APPLICATION_BUCKET = module.s3.application_bucket_name
     
     # DynamoDB 설정
     DYNAMODB_LOGS_TABLE     = module.dynamodb_security_logs.table_name
@@ -149,13 +148,14 @@ output "application_environment_variables" {
 # Lambda 함수 정보
 # =========================================
 output "lambda_functions_info" {
+  description = "Lambda 함수 정보"
   value = {
-    function_names         = [module.lambda_log_processor.function_name, module.lambda_security_alert.function_name]
-    function_arns          = [module.lambda_log_processor.function_arn, module.lambda_security_alert.function_arn]
-    function_invoke_arns   = [module.lambda_log_processor.invoke_arn, module.lambda_security_alert.invoke_arn]
-    function_versions      = [module.lambda_log_processor.function_version, module.lambda_security_alert.function_version]
-    security_group_id      = module.lambda_log_processor.security_group_id
-    execution_role_arn     = module.lambda_log_processor.execution_role_arn
+    function_names         = module.lambda.function_names
+    function_arns          = module.lambda.function_arns
+    function_invoke_arns   = module.lambda.function_invoke_arns
+    function_versions      = module.lambda.function_versions
+    security_group_id      = module.lambda.security_group_id
+    execution_role_arn     = module.lambda.execution_role_arn
   }
 }
 
@@ -166,12 +166,12 @@ output "security_log_collectors_info" {
   description = "보안 로그 수집기 정보"
   value = {
     cloudtrail_arn           = module.security_log_collectors.cloudtrail_arn
-    cloudtrail_log_group_name        = module.security_log_collectors.cloudtrail_log_group_name
+    cloudtrail_name          = module.security_log_collectors.cloudtrail_name
     guardduty_detector_id    = module.security_log_collectors.guardduty_detector_id
     security_hub_arn         = module.security_log_collectors.security_hub_arn
     config_recorder_name     = module.security_log_collectors.config_recorder_name
-    config_delivery_channel_name  = module.security_log_collectors.config_delivery_channel_name
-    vpc_flow_log_id        = module.security_log_collectors.vpc_flow_log_id
+    config_delivery_channel  = module.security_log_collectors.config_delivery_channel
+    vpc_flow_logs_id        = module.security_log_collectors.vpc_flow_logs_id
   }
 }
 
@@ -282,15 +282,13 @@ output "troubleshooting_info" {
     private_subnet_ids       = module.vpc.private_subnet_ids
     security_group_ids = {
       eks_cluster = module.eks.cluster_security_group_id
-      rds         = module.rds.security_group_id
-      lambda_log  = module.lambda_log_processor.security_group_id
-      lambda_alert = module.lambda_security_alert.security_group_id
+      rds         = module.rds.db_security_group_id
+      lambda      = module.lambda.security_group_id
       bastion     = aws_security_group.bastion.id
     }
     iam_roles = {
       eks_app_role = aws_iam_role.eks_app_role.arn
-      lambda_log_role  = module.lambda_log_processor.execution_role_arn
-      lambda_alert_role = module.lambda_security_alert.execution_role_arn
+      lambda_role  = module.lambda.execution_role_arn
     }
     log_groups = {
       application = aws_cloudwatch_log_group.application_logs.name

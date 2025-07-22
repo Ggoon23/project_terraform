@@ -10,9 +10,6 @@ resource "aws_kms_key" "eks" {
     Name = "${var.cluster_name}-eks-kms-key"
     Use  = "EKS Secret Encryption"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 resource "aws_kms_alias" "eks" {
@@ -28,9 +25,6 @@ resource "aws_cloudwatch_log_group" "eks" {
   tags = merge(var.common_tags, {
     Name = "${var.cluster_name}-eks-cluster-logs"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # EKS 클러스터 서비스 역할
@@ -94,9 +88,7 @@ resource "aws_security_group" "cluster" {
 
   lifecycle {
     create_before_destroy = true
-    ignore_changes = [tags_all]
   }
-
 }
 
 # Splunk 통신 포트 추가 (기존 security group에 추가)
@@ -149,9 +141,7 @@ resource "aws_eks_cluster" "main" {
     Name = var.cluster_name
     Type = "EKS Cluster"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
+
   depends_on = [
     aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
     aws_iam_role_policy_attachment.cluster_AmazonEKSVPCResourceController,
@@ -246,10 +236,7 @@ resource "aws_security_group" "node_group" {
 
   lifecycle {
     create_before_destroy = true
-    ignore_changes = [tags_all]
   }
-    
-  
 }
 
 # 클러스터에서 노드 그룹으로 통신 허용
@@ -269,9 +256,9 @@ resource "aws_launch_template" "node_group" {
   count = var.create_launch_template ? 1 : 0
 
   name_prefix = "${var.cluster_name}-eks-node-"
-  image_id    = var.application_image
-  instance_type = var.eks_node_instance_types[0]
-  key_name      = var.ec2_key_pair_name
+  image_id    = var.ami_id
+  instance_type = var.instance_types[0]
+  key_name      = var.key_name
 
   vpc_security_group_ids = [aws_security_group.node_group.id]
 
@@ -314,8 +301,7 @@ resource "aws_launch_template" "node_group" {
 
   lifecycle {
     create_before_destroy = true
-    ignore_changes = [tags_all]
-  } 
+  }
 }
 
 # EKS 매니지드 노드 그룹
@@ -326,16 +312,16 @@ resource "aws_eks_node_group" "main" {
   subnet_ids      = var.private_subnet_ids
 
   # 인스턴스 타입
-  instance_types = var.eks_node_instance_types
+  instance_types = var.instance_types
   capacity_type  = var.capacity_type
   ami_type       = var.ami_type
   disk_size      = var.disk_size
 
   # 스케일링 설정
   scaling_config {
-    desired_size = var.eks_node_desired_capacity
-    max_size     = var.eks_node_max_capacity
-    min_size     = var.eks_node_min_capacity
+    desired_size = var.desired_size
+    max_size     = var.max_size
+    min_size     = var.min_size
   }
 
   # 업데이트 설정
@@ -347,7 +333,7 @@ resource "aws_eks_node_group" "main" {
   dynamic "remote_access" {
     for_each = var.enable_ssh_access ? [1] : []
     content {
-      ec2_ssh_key               = var.ec2_key_pair_name
+      ec2_ssh_key               = var.key_name
       source_security_group_ids = [aws_security_group.node_group.id]
     }
   }
@@ -477,5 +463,4 @@ resource "aws_iam_openid_connect_provider" "eks" {
   tags = merge(var.common_tags, {
     Name = "${var.cluster_name}-oidc-provider"
   })
-
 }
